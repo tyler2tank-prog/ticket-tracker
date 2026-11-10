@@ -1,0 +1,87 @@
+# ---------------------------------------------------------------------------
+# WATCHLIST: what the tracker follows.
+# Each search finds upcoming events and tracks every one it finds.
+# Edit freely. Add a search, delete one, or change the city.
+# ---------------------------------------------------------------------------
+
+look_ahead_days: 35          # only track events happening within this many days
+max_events_per_search: 6     # cap per search so one team doesn't flood the list
+
+# Skip listings whose title contains any of these (parking passes, add-ons, etc.)
+exclude_words: [parking, suite, tailgate, "club access", "vip package", "fast lane", upgrade, voucher]
+
+# --- SeatGeek: resale prices (lowest / median / average / listing count) -------
+# performer = the team or artist's SeatGeek slug, i.e. the last part of their
+# SeatGeek URL: seatgeek.com/dallas-cowboys-tickets  ->  dallas-cowboys
+# If a slug is wrong, the tracker falls back to a keyword search automatically.
+seatgeek:
+  searches:
+    # --- Big games, this week and the next few weeks ---
+    - name: Dallas Cowboys            # includes Eagles at Cowboys on Thanksgiving (Nov 26)
+      performer: dallas-cowboys
+      city: Arlington
+    - name: TCU Football              # K-State Nov 14, Utah Nov 21 at Amon G. Carter
+      performer: tcu-horned-frogs-football
+      city: Fort Worth
+    - name: Philadelphia Eagles home  # Steelers at Eagles, Week 11
+      performer: philadelphia-eagles
+      city: Philadelphia
+    - name: Los Angeles Rams
+      performer: los-angeles-rams
+      city: Inglewood
+    - name: Los Angeles Lakers
+      performer: los-angeles-lakers
+      city: Los Angeles
+    - name: Dallas Mavericks
+      performer: dallas-mavericks
+      city: Dallas
+
+    # --- Big tours still on the road ---
+    - name: Jonas Brothers
+      performer: jonas-brothers
+    - name: Journey
+      performer: journey
+    - name: Doja Cat
+      performer: doja-cat
+    - name: Usher & Chris Brown
+      performer: usher
+    - name: Olivia Rodrigo
+      performer: olivia-rodrigo
+
+  # Track one specific event by its SeatGeek ID (the number at the end of its URL)
+  event_ids: []
+
+# --- Ticketmaster: face-value price ranges (primary sale) ----------------------
+# Ticketmaster events are matched to the same SeatGeek event automatically
+# (same day, same city, similar name), so you see resale vs face value together.
+ticketmaster:
+  searches:
+    - name: Dallas Cowboys
+      keyword: Dallas Cowboys
+      city: Arlington
+    - name: TCU Football
+      keyword: TCU Horned Frogs Football
+      city: Fort Worth
+    - name: Philadelphia Eagles home
+      keyword: Philadelphia Eagles
+      city: Philadelphia
+    - name: Los Angeles Rams
+      keyword: Los Angeles Rams
+      city: Inglewood
+    - name: Los Angeles Lakers
+      keyword: Los Angeles Lakers
+      city: Los Angeles
+    - name: Dallas Mavericks
+      keyword: Dallas Mavericks
+      city: Dallas
+    - name: Jonas Brothers
+      keyword: Jonas Brothers
+    - name: Journey
+      keyword: Journey
+      type: music
+    - name: Doja Cat
+      keyword: Doja Cat
+    - name: Usher & Chris Brown
+      keyword: Usher Chris Brown
+    - name: Olivia Rodrigo
+      keyword: Olivia Rodrigo
