@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ticket Price Tracker</title>
+<style>
+.viz-root {
+  color-scheme: light;
+  --page: #f4f3f0;
+  --surface-1: #fcfcfb;
+  --border: #e4e3df;
+  --grid: #ecebe7;
+  --axis: #c9c8c2;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #7a7974;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --neutral-mark: #8a8984;
+  --accent-bg: #eef4fc;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    color-scheme: dark;
+    --page: #121211; --surface-1: #1a1a19; --border: #2d2d2b; --grid: #262624; --axis: #3d3d3a;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8f8e86;
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --neutral-mark: #8f8e86;
+    --accent-bg: #1c2633;
+  }
+}
+:root[data-theme="dark"] .viz-root {
+  color-scheme: dark;
+  --page: #121211; --surface-1: #1a1a19; --border: #2d2d2b; --grid: #262624; --axis: #3d3d3a;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8f8e86;
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --neutral-mark: #8f8e86;
+  --accent-bg: #1c2633;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.viz-root { background: var(--page); color: var(--text-primary); min-height: 100vh; padding: 28px 20px 60px; }
+.wrap { max-width: 1080px; margin: 0 auto; }
+h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 16px; margin: 0; }
+.sub { color: var(--text-secondary); margin: 0; }
+.note { margin-top: 10px; padding: 8px 12px; border-radius: 8px; background: var(--accent-bg); color: var(--text-primary); display: inline-block; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 22px 0 18px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface-1); }
+.seg button { border: 0; background: transparent; color: var(--text-secondary); padding: 7px 12px; font: inherit; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--text-primary); color: var(--surface-1); }
+.controls input, .controls select { font: inherit; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); color: var(--text-primary); }
+.controls input { min-width: 220px; flex: 1; max-width: 320px; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 18px 18px 14px; margin-bottom: 16px; }
+.card-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+.meta { color: var(--text-secondary); font-size: 13px; }
+.links a { color: var(--text-secondary); font-size: 13px; margin-left: 12px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 14px 0 6px; }
+.tile { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.tile .label { color: var(--text-secondary); font-size: 12px; }
+.tile .value { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.tile .hint { color: var(--text-muted); font-size: 12px; }
+.chart-title { font-size: 13px; font-weight: 600; margin: 14px 0 2px; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); margin: 4px 0 2px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 16px; height: 2px; border-radius: 1px; display: inline-block; }
+.legend i.dash { background: none !important; border-top: 2px dashed; height: 0; }
+svg { display: block; width: 100%; overflow: visible; }
+svg text { font: 11px system-ui, sans-serif; fill: var(--text-muted); font-variant-numeric: tabular-nums; }
+svg .dlabel { font-size: 11px; font-weight: 600; fill: var(--text-secondary); }
+details { margin-top: 8px; }
+summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--text-secondary); font-weight: 600; }
+.tablewrap { max-height: 280px; overflow: auto; }
+.tip { position: fixed; pointer-events: none; z-index: 10; background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); display: none; min-width: 150px; }
+.tip .h { color: var(--text-secondary); margin-bottom: 4px; }
+.tip .row { display: flex; align-items: center; gap: 8px; }
+.tip .row i { width: 12px; height: 2px; display: inline-block; }
+.tip .row b { font-variant-numeric: tabular-nums; }
+.tip .row span { color: var(--text-secondary); }
+.empty { color: var(--text-secondary); padding: 30px; text-align: center; }
+.group-label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+<div class="wrap">
+  <header>
+    <h1>Ticket price tracker</h1>
+    <p class="sub" id="gen"></p>
+    <div id="note"></div>
+  </header>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Time range" id="range">
+      <button data-h="99999" aria-pressed="true">All</button>
+      <button data-h="168" aria-pressed="false">Last 7 days</button>
+      <button data-h="48" aria-pressed="false">Last 48 hours</button>
+      <button data-h="12" aria-pressed="false">Final 12 hours</button>
+    </div>
+    <input type="search" id="q" placeholder="Filter events (team, artist, city)" aria-label="Filter events">
+    <select id="sort" aria-label="Sort events">
+      <option value="soon">Soonest first</option>
+      <option value="drop">Biggest 24h drop</option>
+      <option value="cheap">Cheapest now</option>
+    </select>
+  </div>
+
+  <section id="typical"></section>
+  <section id="events"></section>
+</div>
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
+</div>
+
+<script>const DATA = /*__DATA__*/null;</script>
+<script>
+(function () {
+  const $ = (s, el = document) => el.querySelector(s);
+  const tip = $("#tip");
+  let RANGE = 99999;
+
+  // ---------- formatting
+  const money = v => v == null ? "–" : "$" + Math.round(v).toLocaleString();
+  const int = v => v == null ? "–" : Math.round(v).toLocaleString();
+  function ago(h) {
+    if (h == null) return "";
+    if (h < 0) return "after start";
+    if (h < 1) return Math.round(h * 60) + " min before";
+    if (h < 48) return (Math.round(h * 10) / 10) + " h before";
+    return (Math.round(h / 24 * 10) / 10) + " days before";
+  }
+  function tickLabel(h) {
+    if (h === 0) return "Start";
+    if (h >= 24 && h % 24 === 0) return (h / 24) + "d";
+    return h + "h";
+  }
+  function el(tag, attrs = {}, text) {
+    const n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function h(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function niceTicks(lo, hi, count = 4) {
+    if (lo === hi) { lo -= 1; hi += 1; }
+    const raw = (hi - lo) / count, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || 10 * mag;
+    const start = Math.floor(lo / step) * step, end = Math.ceil(hi / step) * step;
+    const t = []; for (let v = start; v <= end + step / 2; v += step) t.push(+v.toFixed(6));
+    return t;
+  }
+
+  // ---------- line chart: x = hours before event (time flows right toward the event)
+  // series: [{name, color, pts: [[hours, value], ...], dash}]
+  function lineChart(host, series, opts) {
+    host.textContent = "";
+    const W = Math.max(320, host.clientWidth), H = opts.height || 220;
+    const m = { t: 10, r: (opts.labels || opts.align) ? 92 : 16, b: 26, l: 56 };
+    const all = series.flatMap(s => s.pts).filter(p => p[1] != null);
+    if (!all.length) { host.appendChild(h("div", "empty", "No data in this range yet.")); return; }
+    const xs = all.map(p => p[0]);
+    const xMax = Math.max(...xs), xMin = Math.min(...xs);
+    const span = Math.max(1, xMax - xMin);
+    const X = v => m.l + (xMax - v) / span * (W - m.l - m.r);
+    let yLo = Math.min(...all.map(p => p[1])), yHi = Math.max(...all.map(p => p[1]));
+    if (opts.zero) yLo = 0;
+    const pad = (yHi - yLo) * 0.08 || 1;
+    const yt = niceTicks(opts.zero ? 0 : Math.max(0, yLo - pad), yHi + pad);
+    const y0 = yt[0], y1 = yt[yt.length - 1];
+    const Y = v => m.t + (1 - (v - y0) / (y1 - y0)) * (H - m.t - m.b);
+
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": opts.aria || "chart" });
+    // grid + y labels
+    yt.forEach(v => {
+      svg.appendChild(el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: "var(--grid)", "stroke-width": 1 }));
+      svg.appendChild(el("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end" }, opts.yFmt(v)));
+    });
+    // x ticks
+    const steps = [1, 2, 3, 6, 12, 24, 48, 72, 168, 336];
+    const step = steps.find(s => span / s <= 7) || 336;
+    for (let v = Math.ceil(xMin / step) * step; v <= xMax; v += step) {
+      const x = X(v);
+      svg.appendChild(el("line", { x1: x, x2: x, y1: H - m.b, y2: H - m.b + 4, stroke: "var(--axis)" }));
+      svg.appendChild(el("text", { x, y: H - m.b + 16, "text-anchor": "middle" }, tickLabel(v)));
+    }
+    svg.appendChild(el("line", { x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, stroke: "var(--axis)" }));
+
+    // lines
+    const labelSpots = [];
+    series.forEach(s => {
+      const pts = s.pts.filter(p => p[1] != null).sort((a, b) => b[0] - a[0]);
+      if (!pts.length) return;
+      const d = pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1)).join("");
+      svg.appendChild(el("path", { d, fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round",
+        "stroke-linecap": "round", "stroke-dasharray": s.dash ? "5 4" : "none" }));
+      const last = pts[pts.length - 1];
+      svg.appendChild(el("circle", { cx: X(last[0]), cy: Y(last[1]), r: 4, fill: s.color, stroke: "var(--surface-1)", "stroke-width": 2 }));
+      if (opts.labels) labelSpots.push({ y: Y(last[1]), x: X(last[0]), text: s.short || s.name });
+    });
+    // direct labels at the line ends, nudged apart so they never overlap
+    labelSpots.sort((a, b) => a.y - b.y);
+    for (let i = 1; i < labelSpots.length; i++) if (labelSpots[i].y - labelSpots[i - 1].y < 13) labelSpots[i].y = labelSpots[i - 1].y + 13;
+    labelSpots.forEach(l => svg.appendChild(el("text", { class: "dlabel", x: l.x + 8, y: l.y + 4 }, l.text)));
+
+    // hover: crosshair snaps to nearest snapshot, tooltip lists every series there
+    const cross = el("line", { y1: m.t, y2: H - m.b, stroke: "var(--axis)", "stroke-width": 1, visibility: "hidden" });
+    const dots = series.map(s => el("circle", { r: 4.5, fill: s.color, stroke: "var(--surface-1)", "stroke-width": 2, visibility: "hidden" }));
+    svg.appendChild(cross); dots.forEach(d => svg.appendChild(d));
+    const hit = el("rect", { x: m.l, y: 0, width: W - m.l - m.r + 10, height: H, fill: "transparent", tabindex: 0 });
+    svg.appendChild(hit);
+    const uniq = [...new Set(xs)].sort((a, b) => b - a);
+    let focusIdx = uniq.length - 1;
+    function show(hx, cx, cy) {
+      cross.setAttribute("x1", X(hx)); cross.setAttribute("x2", X(hx)); cross.setAttribute("visibility", "visible");
+      tip.textContent = "";
+      tip.appendChild(h("div", "h", ago(hx)));
+      series.forEach((s, i) => {
+        const near = s.pts.filter(p => p[1] != null).reduce((b, p) => !b || Math.abs(p[0] - hx) < Math.abs(b[0] - hx) ? p : b, null);
+        if (!near || Math.abs(near[0] - hx) > Math.max(1.5, span * 0.02)) { dots[i].setAttribute("visibility", "hidden"); return; }
+        dots[i].setAttribute("cx", X(near[0])); dots[i].setAttribute("cy", Y(near[1])); dots[i].setAttribute("visibility", "visible");
+        const row = h("div", "row"); const key = h("i"); key.style.background = s.color;
+        row.append(key, h("b", null, opts.yFmt(near[1])), h("span", null, s.name)); tip.appendChild(row);
+      });
+      tip.style.display = "block";
+      const tw = tip.offsetWidth, th = tip.offsetHeight;
+      let left = cx + 14; if (left + tw > window.innerWidth - 8) left = cx - tw - 14;
+      tip.style.left = left + "px"; tip.style.top = Math.max(8, cy - th - 10) + "px";
+    }
+    function hide() { cross.setAttribute("visibility", "hidden"); dots.forEach(d => d.setAttribute("visibility", "hidden")); tip.style.display = "none"; }
+    hit.addEventListener("pointermove", ev => {
+      const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * (W / r.width);
+      const hv = xMax - (px - m.l) / (W - m.l - m.r) * span;
+      const nearest = uniq.reduce((b, v) => Math.abs(v - hv) < Math.abs(b - hv) ? v : b, uniq[0]);
+      show(nearest, ev.clientX, ev.clientY);
+    });
+    hit.addEventListener("pointerleave", hide);
+    hit.addEventListener("blur", hide);
+    hit.addEventListener("keydown", ev => {
+      if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+      focusIdx = Math.max(0, Math.min(uniq.length - 1, focusIdx + (ev.key === "ArrowRight" ? 1 : -1)));
+      const r = svg.getBoundingClientRect();
+      show(uniq[focusIdx], r.left + X(uniq[focusIdx]) * r.width / W, r.top + 30);
+      ev.preventDefault();
+    });
+    host.appendChild(svg);
+  }
+
+  function legend(items) {
+    const l = h("div", "legend");
+    items.forEach(it => {
+      const s = h("span"); const k = h("i", it.dash ? "dash" : "");
+      if (it.dash) k.style.borderColor = it.color; else k.style.background = it.color;
+      s.append(k, document.createTextNode(it.name)); l.appendChild(s);
+    });
+    return l;
+  }
+  function tile(label, value, hint) {
+    const t = h("div", "tile"); t.append(h("div", "label", label), h("div", "value", value));
+    if (hint) t.appendChild(h("div", "hint", hint)); return t;
+  }
+
+  // ---------- per-event stats
+  function stats(ev) {
+    const p = ev.points.filter(x => x[1] != null);
+    if (!p.length) return {};
+    const now = p[p.length - 1];
+    const dayAgo = p.reduce((b, x) => !b || Math.abs(x[0] - (now[0] + 24)) < Math.abs(b[0] - (now[0] + 24)) ? x : b, null);
+    const low = p.reduce((b, x) => x[1] < b[1] ? x : b, p[0]);
+    const chg = dayAgo && Math.abs(dayAgo[0] - (now[0] + 24)) < 8 ? now[1] - dayAgo[1] : null;
+    return { now, low, chg, chgPct: chg != null && dayAgo[1] ? chg / dayAgo[1] * 100 : null };
+  }
+
+  // ---------- typical curve across all events
+  function renderTypical() {
+    const host = $("#typical"); host.textContent = "";
+    const t = DATA.typical || [];
+    if (t.length < 3) return;
+    const card = h("div", "card");
+    const head = h("div", "card-head");
+    head.append(h("h2", null, "How prices usually move in the final week"));
+    const n = Math.max(...t.map(x => x.n));
+    card.append(head, h("div", "meta", `Lowest price as a % of the lowest price 7 days out, averaged across ${n} event${n === 1 ? "" : "s"}. Below 100 means it got cheaper.`));
+    const chart = h("div"); card.appendChild(chart);
+    const tbl = h("details"); tbl.appendChild(h("summary", null, "Table view"));
+    const wrap = h("div", "tablewrap"); const table = h("table");
+    const hr = h("tr"); ["Time before event", "Typical price (100 = week out)", "Events"].forEach(x => hr.appendChild(h("th", null, x))); table.appendChild(hr);
+    t.forEach(r => { const tr = h("tr"); [ago(r.h) || "Start", r.idx.toFixed(1), r.n].forEach(x => tr.appendChild(h("td", null, String(x)))); table.appendChild(tr); });
+    wrap.appendChild(table); tbl.appendChild(wrap); card.appendChild(tbl);
+    host.appendChild(card);
+    const draw = () => lineChart(chart, [{ name: "Typical lowest price", color: "var(--series-1)", pts: t.map(r => [r.h, r.idx]) }],
+      { height: 200, yFmt: v => Math.round(v) + "", aria: "Typical lowest price relative to one week before the event" });
+    draw(); host._draw = draw;
+  }
+
+  // ---------- event cards
+  function renderEvents() {
+    const host = $("#events"); host.textContent = "";
+    const q = $("#q").value.trim().toLowerCase();
+    let evs = DATA.events.filter(e => !q || [e.title, e.venue, e.city, e.group].join(" ").toLowerCase().includes(q));
+    const st = new Map(evs.map(e => [e.key, stats(e)]));
+    const sort = $("#sort").value;
+    evs.sort((a, b) => {
+      if (sort === "drop") return ((st.get(a.key).chgPct ?? 0) - (st.get(b.key).chgPct ?? 0));
+      if (sort === "cheap") return ((st.get(a.key).now || [0, 1e9])[1] - (st.get(b.key).now || [0, 1e9])[1]);
+      return a.date_local.localeCompare(b.date_local);
+    });
+    if (!evs.length) { host.appendChild(h("div", "empty card", DATA.events.length ? "No events match that filter." : "No snapshots yet. The first ones appear after the tracker's first run.")); return; }
+    const draws = [];
+    evs.forEach(e => {
+      const s = st.get(e.key);
+      const card = h("div", "card");
+      const head = h("div", "card-head");
+      const left = h("div");
+      if (e.group) left.appendChild(h("div", "group-label", e.group));
+      left.append(h("h2", null, e.title));
+      const d = new Date(e.date_local);
+      const when = isNaN(d) ? e.date_local : d.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      left.appendChild(h("div", "meta", `${when} · ${e.venue}, ${e.city}${e.state ? ", " + e.state : ""}`));
+      const links = h("div", "links");
+      if (e.url) { const a = h("a", null, e.source === "seatgeek" ? "SeatGeek" : "Ticketmaster"); a.href = e.url; a.target = "_blank"; a.rel = "noopener"; links.appendChild(a); }
+      if (e.tm_url) { const a = h("a", null, "Ticketmaster"); a.href = e.tm_url; a.target = "_blank"; a.rel = "noopener"; links.appendChild(a); }
+      head.append(left, links); card.appendChild(head);
+
+      const tiles = h("div", "tiles");
+      const resale = e.source === "seatgeek";
+      tiles.appendChild(tile(resale ? "Lowest resale now" : "Face value from", money(s.now && s.now[1]), s.now ? ago(s.now[0]) : ""));
+      if (s.chg != null) {
+        const arrow = s.chg < 0 ? "▼ " : s.chg > 0 ? "▲ " : "";
+        tiles.appendChild(tile("Change, last 24h", arrow + money(Math.abs(s.chg)), (s.chgPct > 0 ? "+" : "") + s.chgPct.toFixed(1) + "%"));
+      }
+      if (s.low) tiles.appendChild(tile("Lowest seen", money(s.low[1]), ago(s.low[0])));
+      const lc = e.points.filter(p => p[4] != null);
+      if (lc.length) tiles.appendChild(tile("Listings now", int(lc[lc.length - 1][4]), "tickets for sale"));
+      const face = e.face.filter(f => f[1] != null);
+      if (face.length && resale) tiles.appendChild(tile("Ticketmaster face value", money(face[face.length - 1][1]) + "+", "primary sale"));
+      card.appendChild(tiles);
+
+      const inRange = arr => arr.filter(p => p[0] != null && p[0] <= RANGE);
+      const series = resale ? [
+        { name: "Lowest resale (SeatGeek)", short: "Lowest", color: "var(--series-1)", pts: inRange(e.points).map(p => [p[0], p[1]]) },
+        { name: "Median resale (SeatGeek)", short: "Median", color: "var(--series-2)", pts: inRange(e.points).map(p => [p[0], p[2]]) },
+      ] : [{ name: "Face value from (Ticketmaster)", short: "Face", color: "var(--series-1)", pts: inRange(e.points).map(p => [p[0], p[1]]) }];
+      if (resale && face.length) series.push({ name: "Face value from (Ticketmaster)", short: "Face", color: "var(--series-3)", dash: true, pts: inRange(face).map(f => [f[0], f[1]]) });
+
+      card.appendChild(h("div", "chart-title", "Price"));
+      if (series.length > 1) card.appendChild(legend(series));
+      const priceHost = h("div"); card.appendChild(priceHost);
+      let lcHost = null;
+      if (lc.length) {
+        card.appendChild(h("div", "chart-title", "Listings for sale"));
+        lcHost = h("div"); card.appendChild(lcHost);
+      }
+      // table view
+      const det = h("details"); det.appendChild(h("summary", null, "Table view"));
+      const wrap = h("div", "tablewrap"); const table = h("table");
+      const hdr = resale ? ["Time before event", "Snapshot (UTC)", "Lowest", "Median", "Average", "Listings"] : ["Time before event", "Snapshot (UTC)", "Face value from"];
+      const tr0 = h("tr"); hdr.forEach(x => tr0.appendChild(h("th", null, x))); table.appendChild(tr0);
+      [...inRange(e.points)].reverse().forEach(p => {
+        const tr = h("tr");
+        const cells = resale ? [ago(p[0]), p[5].replace("T", " ").replace("Z", ""), money(p[1]), money(p[2]), money(p[3]), int(p[4])]
+                             : [ago(p[0]), p[5].replace("T", " ").replace("Z", ""), money(p[1])];
+        cells.forEach(c => tr.appendChild(h("td", null, c))); table.appendChild(tr);
+      });
+      wrap.appendChild(table); det.appendChild(wrap); card.appendChild(det);
+      host.appendChild(card);
+
+      draws.push(() => {
+        lineChart(priceHost, series, { height: 220, labels: true, yFmt: money, aria: "Price over time for " + e.title });
+        if (lcHost) lineChart(lcHost, [{ name: "Listings", color: "var(--neutral-mark)", pts: inRange(lc).map(p => [p[0], p[4]]) }],
+          { height: 120, zero: true, align: true, yFmt: int, aria: "Listings for sale over time for " + e.title });
+      });
+    });
+    draws.forEach(f => f());
+    host._draw = () => draws.forEach(f => f());
+  }
+
+  // ---------- boot
+  if (!DATA) { $("#events").appendChild(h("div", "empty card", "No data embedded. Run: python tracker.py report")); return; }
+  const g = new Date(DATA.generated_utc);
+  $("#gen").textContent = `${DATA.events.length} events tracked · updated ${g.toLocaleString()}`;
+  if (DATA.note) $("#note").appendChild(h("div", "note", DATA.note));
+  $("#range").addEventListener("click", ev => {
+    const b = ev.target.closest("button"); if (!b) return;
+    $("#range").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+    RANGE = +b.dataset.h; renderEvents();
+  });
+  $("#q").addEventListener("input", renderEvents);
+  $("#sort").addEventListener("change", renderEvents);
+  renderTypical(); renderEvents();
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { $("#typical")._draw && $("#typical")._draw(); $("#events")._draw && $("#events")._draw(); }, 150); });
+})();
+</script>
+</body>
+</html>
